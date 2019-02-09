@@ -7,7 +7,40 @@ from requests.exceptions import RequestException
 import json
 from PIL import Image
 import imghdr
+import os
+from google.cloud import storage
 
+def upload_blob(bucket_name, source_file_name, dir, destination_file_name):
+    """Uploads a file to the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+
+    destination_blob_name = dir + '/' + destination_file_name
+
+    blob = bucket.blob(destination_blob_name)
+
+    source_path = dir + '/' + source_file_name
+
+    blob.upload_from_filename(source_path)
+
+    print('File {} uploaded to {}.'.format(
+        source_file_name,
+        destination_blob_name))
+
+def upload_string_blob(bucket_name, source_file_name, dir, string):
+    """Uploads a file to the bucket."""
+    storage_client = storage.Client()
+    bucket = storage_client.get_bucket(bucket_name)
+
+    destination_blob_name = dir + '/' + source_file_name + '.json'
+
+    blob = bucket.blob(destination_blob_name)
+
+    blob.upload_from_string(json.dumps(string, indent=2), content_type='application/json')
+
+    print('File {} uploaded to {}.'.format(
+        source_file_name,
+        destination_blob_name))
 
 class BasicElementDownloader:
     @classmethod
@@ -113,6 +146,11 @@ class LesionImageDownloader():
 
         BasicElementDownloader.download_img(img_url=img_url, img_name=desc['name'], dir=dir)
 
+        filename = desc['name'] + '.jpeg'
+
+        upload_blob('isic-dataset', filename, dir, filename)
+        os.remove(dir + '/' + filename)
+
     @classmethod
     def fetch_img_description(cls, id: str) -> list:
         """
@@ -135,6 +173,7 @@ class LesionImageDownloader():
         :param dir:
         :return:
         """
+        upload_string_blob('isic-dataset', desc['name'], dir, desc)
         return BasicElementDownloader.save_description(desc, dir)
 
     @classmethod
@@ -147,6 +186,10 @@ class LesionImageDownloader():
         """
         desc = cls.fetch_img_description(id)
         BasicElementDownloader.save_description(desc, dir)
+
+        # print('HELLO', desc['name'])
+        # upload_blob('isic-dataset', desc['name'], dir, desc['name'] + '.json')
+        # os.remove(dir + '/' + desc['name'])
         return desc
 
 
